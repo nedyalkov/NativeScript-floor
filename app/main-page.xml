@@ -1,0 +1,11 @@
+<Page xmlns="http://www.nativescript.org/tns.xsd" loaded="pageLoaded">
+  <GridLayout rows="auto, *">
+    <StackLayout row="0">
+      <Label text="{{ title }}" cssClass="title" />
+    </StackLayout>
+    <GridLayout row="1" cssClass="content">
+      <Image imageSource="{{ image }}" stretch="aspectFit" horizontalAlignment="left" verticalAlignment="top" />
+      <ActivityIndicator busy="{{ isLoading }}" horizontalAlignment="center" verticalAlignment="center" />
+    </GridLayout>
+  </GridLayout>
+</Page>

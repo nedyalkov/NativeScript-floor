@@ -28,6 +28,7 @@ var initEvents = function () {
                 if (exports.onExit) {
                     exports.onExit();
                 }
+                androidApp.startActivity = undefined;
             }
             if (androidApp.onActivityDestroyed) {
                 androidApp.onActivityDestroyed(activity);
@@ -90,7 +91,7 @@ var AndroidApplication = (function () {
         this.context = nativeApp.getApplicationContext();
     }
     AndroidApplication.prototype.getActivity = function (intent) {
-        if (intent && intent.Action === android.content.Intent.ACTION_MAIN) {
+        if (intent && intent.getAction() === android.content.Intent.ACTION_MAIN) {
             if (exports.onLaunch) {
                 exports.onLaunch(intent);
             }

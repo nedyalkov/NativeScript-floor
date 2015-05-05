@@ -16,10 +16,6 @@ var ChangeType = (function () {
 })();
 exports.ChangeType = ChangeType;
 var CHANGE = "change";
-var knownEvents;
-(function (knownEvents) {
-    knownEvents.change = CHANGE;
-})(knownEvents = exports.knownEvents || (exports.knownEvents = {}));
 var ObservableArray = (function (_super) {
     __extends(ObservableArray, _super);
     function ObservableArray() {
@@ -77,8 +73,6 @@ var ObservableArray = (function (_super) {
     ObservableArray.prototype.concat = function () {
         this._addArgs.index = this._array.length;
         var result = this._array.concat.apply(this._array, arguments);
-        this._addArgs.addedCount = result.length - this._array.length;
-        this.notify(this._addArgs);
         return result;
     };
     ObservableArray.prototype.join = function (separator) {
@@ -89,6 +83,7 @@ var ObservableArray = (function (_super) {
         var result = this._array.pop();
         this._deleteArgs.removed = [result];
         this.notify(this._deleteArgs);
+        this._notifyLengthChange();
         return result;
     };
     ObservableArray.prototype.push = function () {
@@ -104,7 +99,12 @@ var ObservableArray = (function (_super) {
         }
         this._addArgs.addedCount = this._array.length - this._addArgs.index;
         this.notify(this._addArgs);
+        this._notifyLengthChange();
         return this._array.length;
+    };
+    ObservableArray.prototype._notifyLengthChange = function () {
+        var lengthChangedData = this._createPropertyChangeData("length", this._array.length);
+        this.notify(lengthChangedData);
     };
     ObservableArray.prototype.reverse = function () {
         return this._array.reverse();
@@ -114,6 +114,7 @@ var ObservableArray = (function (_super) {
         this._deleteArgs.index = 0;
         this._deleteArgs.removed = [result];
         this.notify(this._deleteArgs);
+        this._notifyLengthChange();
         return result;
     };
     ObservableArray.prototype.slice = function (start, end) {
@@ -133,6 +134,9 @@ var ObservableArray = (function (_super) {
             removed: result,
             addedCount: this._array.length > length ? this._array.length - length : 0
         });
+        if (this._array.length !== length) {
+            this._notifyLengthChange();
+        }
         return result;
     };
     ObservableArray.prototype.unshift = function () {
@@ -141,6 +145,7 @@ var ObservableArray = (function (_super) {
         this._addArgs.index = 0;
         this._addArgs.addedCount = result - length;
         this.notify(this._addArgs);
+        this._notifyLengthChange();
         return result;
     };
     ObservableArray.prototype.indexOf = function (searchElement, fromIndex) {
@@ -182,6 +187,7 @@ var ObservableArray = (function (_super) {
     ObservableArray.prototype.reduceRight = function (callbackfn, initialValue) {
         return this._array.reduceRight(callbackfn, initialValue);
     };
+    ObservableArray.changeEvent = CHANGE;
     return ObservableArray;
 })(observable.Observable);
 exports.ObservableArray = ObservableArray;

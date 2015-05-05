@@ -6,10 +6,11 @@ var __extends = this.__extends || function (d, b) {
 };
 var common = require("ui/gestures/gestures-common");
 var definition = require("ui/gestures");
+var view = require("ui/core/view");
+var trace = require("trace");
 require("utils/module-merge").merge(common, exports);
 var SWIPE_THRESHOLD = 100;
 var SWIPE_VELOCITY_THRESHOLD = 100;
-var LOADED = "loaded";
 var GesturesObserver = (function () {
     function GesturesObserver(callback) {
         this._callback = callback;
@@ -24,47 +25,56 @@ var GesturesObserver = (function () {
     GesturesObserver.prototype.observe = function (target, type) {
         var _this = this;
         if (target) {
+            this._target = target;
+            this._onTargetLoaded = function (args) {
+                trace.write(_this._target + ".target loaded. android:" + _this._target.android, "gestures");
+                _this._attach(target, type);
+            };
+            this._onTargetUnloaded = function (args) {
+                trace.write(_this._target + ".target unloaded. android:" + _this._target.android, "gestures");
+                _this._dettach();
+            };
+            target.on(view.View.loadedEvent, this._onTargetLoaded);
+            target.on(view.View.unloadedEvent, this._onTargetUnloaded);
             if (target.isLoaded) {
                 this._attach(target, type);
-            }
-            else {
-                this._onTargetLoaded = function (args) {
-                    _this._attach(target, type);
-                };
-                target.on(LOADED, this._onTargetLoaded);
             }
         }
     };
     GesturesObserver.prototype.disconnect = function () {
+        this._dettach();
         if (this._target) {
-            if (this._target.android) {
-                this._target.android.setOnTouchListener(null);
-            }
-            if (this._onTargetLoaded != null) {
-                this._target.off(LOADED, this._onTargetLoaded);
-                this._onTargetLoaded = null;
-            }
+            this._target.off(view.View.loadedEvent, this._onTargetLoaded);
+            this._target.off(view.View.unloadedEvent, this._onTargetUnloaded);
+            this._onTargetLoaded = null;
+            this._onTargetUnloaded = null;
+            this._target = null;
+        }
+    };
+    GesturesObserver.prototype._dettach = function () {
+        trace.write(this._target + "._detach() android:" + this._target.android, "gestures");
+        if (this._target && this._target.android) {
+            this._target.android.setOnTouchListener(null);
         }
         this._onTouchListener = null;
         this._simpleGestureDetector = null;
         this._scaleGestureDetector = null;
         this._swipeGestureDetector = null;
         this._panGestureDetector = null;
-        this._target = null;
     };
     GesturesObserver.prototype._attach = function (target, type) {
-        this.disconnect();
-        this._target = target;
-        if (type & definition.GestureTypes.Tap || type & definition.GestureTypes.DoubleTap || type & definition.GestureTypes.LongPress) {
+        trace.write(this._target + "._attach() android:" + this._target.android, "gestures");
+        this._dettach();
+        if (type & definition.GestureTypes.tap || type & definition.GestureTypes.doubleTap || type & definition.GestureTypes.longPress) {
             this._simpleGestureDetector = new android.support.v4.view.GestureDetectorCompat(target._context, new TapAndDoubleTapGestureListener(this, this._target));
         }
-        if (type & definition.GestureTypes.Pinch) {
+        if (type & definition.GestureTypes.pinch) {
             this._scaleGestureDetector = new android.view.ScaleGestureDetector(target._context, new PinchGestureListener(this, this._target));
         }
-        if (type & definition.GestureTypes.Swipe) {
+        if (type & definition.GestureTypes.swipe) {
             this._swipeGestureDetector = new android.support.v4.view.GestureDetectorCompat(target._context, new SwipeGestureListener(this, this._target));
         }
-        if (type & definition.GestureTypes.Pan) {
+        if (type & definition.GestureTypes.pan) {
             this._panGestureDetector = new android.support.v4.view.GestureDetectorCompat(target._context, new PanGestureListener(this, this._target));
         }
         var that = new WeakRef(this);
@@ -86,13 +96,13 @@ var GesturesObserver = (function () {
                 if (owner._panGestureDetector) {
                     owner._panGestureDetector.onTouchEvent(motionEvent);
                 }
-                if (type & definition.GestureTypes.Rotation && motionEvent.getPointerCount() === 2) {
+                if (type & definition.GestureTypes.rotation && motionEvent.getPointerCount() === 2) {
                     var deltaX = motionEvent.getX(0) - motionEvent.getX(1);
                     var deltaY = motionEvent.getY(0) - motionEvent.getY(1);
                     var radians = Math.atan(deltaY / deltaX);
                     var degrees = radians * (180 / Math.PI);
                     var args = {
-                        type: definition.GestureTypes.Rotation,
+                        type: definition.GestureTypes.rotation,
                         view: owner._target,
                         android: motionEvent,
                         rotation: degrees,
@@ -119,7 +129,7 @@ function _getArgs(type, view, e) {
 }
 function _getSwipeArgs(direction, view, initialEvent, currentEvent) {
     return {
-        type: definition.GestureTypes.Swipe,
+        type: definition.GestureTypes.swipe,
         view: view,
         android: { initial: initialEvent, current: currentEvent },
         direction: direction
@@ -127,7 +137,7 @@ function _getSwipeArgs(direction, view, initialEvent, currentEvent) {
 }
 function _getPanArgs(deltaX, deltaY, view, initialEvent, currentEvent) {
     return {
-        type: definition.GestureTypes.Pan,
+        type: definition.GestureTypes.pan,
         view: view,
         android: { initial: initialEvent, current: currentEvent },
         deltaX: deltaX,
@@ -148,12 +158,12 @@ var TapAndDoubleTapGestureListener = (function (_super) {
         return global.__native(this);
     }
     TapAndDoubleTapGestureListener.prototype.onSingleTapConfirmed = function (motionEvent) {
-        var args = _getArgs(definition.GestureTypes.Tap, this._target, motionEvent);
+        var args = _getArgs(definition.GestureTypes.tap, this._target, motionEvent);
         _executeCallback(this._observer, args);
         return true;
     };
     TapAndDoubleTapGestureListener.prototype.onDoubleTap = function (motionEvent) {
-        var args = _getArgs(definition.GestureTypes.DoubleTap, this._target, motionEvent);
+        var args = _getArgs(definition.GestureTypes.doubleTap, this._target, motionEvent);
         _executeCallback(this._observer, args);
         return true;
     };
@@ -161,7 +171,7 @@ var TapAndDoubleTapGestureListener = (function (_super) {
         return true;
     };
     TapAndDoubleTapGestureListener.prototype.onLongPress = function (motionEvent) {
-        var args = _getArgs(definition.GestureTypes.LongPress, this._target, motionEvent);
+        var args = _getArgs(definition.GestureTypes.longPress, this._target, motionEvent);
         _executeCallback(this._observer, args);
         return true;
     };
@@ -177,7 +187,7 @@ var PinchGestureListener = (function (_super) {
     }
     PinchGestureListener.prototype.onScale = function (detector) {
         var args = {
-            type: definition.GestureTypes.Pinch,
+            type: definition.GestureTypes.pinch,
             view: this._target,
             android: detector,
             scale: detector.getScaleFactor()
@@ -207,12 +217,12 @@ var SwipeGestureListener = (function (_super) {
             if (Math.abs(deltaX) > Math.abs(deltaY)) {
                 if (Math.abs(deltaX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
                     if (deltaX > 0) {
-                        args = _getSwipeArgs(definition.SwipeDirection.Right, this._target, initialEvent, currentEvent);
+                        args = _getSwipeArgs(definition.SwipeDirection.right, this._target, initialEvent, currentEvent);
                         _executeCallback(this._observer, args);
                         result = true;
                     }
                     else {
-                        args = _getSwipeArgs(definition.SwipeDirection.Left, this._target, initialEvent, currentEvent);
+                        args = _getSwipeArgs(definition.SwipeDirection.left, this._target, initialEvent, currentEvent);
                         _executeCallback(this._observer, args);
                         result = true;
                     }
@@ -221,12 +231,12 @@ var SwipeGestureListener = (function (_super) {
             else {
                 if (Math.abs(deltaY) > SWIPE_THRESHOLD && Math.abs(velocityY) > SWIPE_VELOCITY_THRESHOLD) {
                     if (deltaY > 0) {
-                        args = _getSwipeArgs(definition.SwipeDirection.Down, this._target, initialEvent, currentEvent);
+                        args = _getSwipeArgs(definition.SwipeDirection.down, this._target, initialEvent, currentEvent);
                         _executeCallback(this._observer, args);
                         result = true;
                     }
                     else {
-                        args = _getSwipeArgs(definition.SwipeDirection.Up, this._target, initialEvent, currentEvent);
+                        args = _getSwipeArgs(definition.SwipeDirection.up, this._target, initialEvent, currentEvent);
                         _executeCallback(this._observer, args);
                         result = true;
                     }

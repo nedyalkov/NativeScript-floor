@@ -12,16 +12,21 @@ var ANDROID = "_android";
 var NATIVE_VIEW = "_nativeView";
 var VIEW_GROUP = "_viewGroup";
 var OWNER = "_owner";
+function onIdPropertyChanged(data) {
+    var view = data.object;
+    view._nativeView.setTag(data.newValue);
+}
+viewCommon.View.idProperty.metadata.onSetNativeValue = onIdPropertyChanged;
 function onIsEnabledPropertyChanged(data) {
     var view = data.object;
     view._nativeView.setEnabled(data.newValue);
 }
-viewCommon.isEnabledProperty.metadata.onSetNativeValue = onIsEnabledPropertyChanged;
+viewCommon.View.isEnabledProperty.metadata.onSetNativeValue = onIsEnabledPropertyChanged;
 function onIsUserInteractionEnabledPropertyChanged(data) {
     var view = data.object;
     view._updateOnTouchListener(data.newValue);
 }
-viewCommon.isUserInteractionEnabledProperty.metadata.onSetNativeValue = onIsUserInteractionEnabledPropertyChanged;
+viewCommon.View.isUserInteractionEnabledProperty.metadata.onSetNativeValue = onIsUserInteractionEnabledPropertyChanged;
 exports.NativeViewGroup = android.view.ViewGroup.extend({
     get owner() {
         return this[OWNER];
@@ -185,6 +190,23 @@ var View = (function (_super) {
             return this.android.requestFocus();
         }
         return false;
+    };
+    View.resolveSizeAndState = function (size, specSize, specMode, childMeasuredState) {
+        var result = size;
+        switch (specMode) {
+            case utils.layout.UNSPECIFIED:
+                result = size;
+                break;
+            case utils.layout.AT_MOST:
+                if (specSize < size) {
+                    result = specSize | utils.layout.MEASURED_STATE_TOO_SMALL;
+                }
+                break;
+            case utils.layout.EXACTLY:
+                result = specSize;
+                break;
+        }
+        return result | (childMeasuredState & utils.layout.MEASURED_STATE_MASK);
     };
     return View;
 })(viewCommon.View);

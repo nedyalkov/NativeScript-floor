@@ -3,10 +3,12 @@ var observable = require("data/observable"),
 
 var mainViewModel = new observable.Observable();
 
-mainViewModel.set("roomName", "Skyline Ballroom");
-api.getRoomImage(0, function (roomName, imageSource) {
-    mainViewModel.set("title", roomName);
+mainViewModel.set("title", "Loading floorplan");
+mainViewModel.set("isLoading", true);
+api.getRoomImage(0, function (name, imageSource) {
+    mainViewModel.set("title", name);
     mainViewModel.set("image", imageSource);
+    mainViewModel.set("isLoading", false);
 });
 
 exports.mainViewModel = mainViewModel;
