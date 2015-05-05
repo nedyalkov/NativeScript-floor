@@ -1,5 +1,5 @@
 var observable = require("data/observable"),
-    api = require("./officeRnDApi");
+    api = require("./officerndApi");
 
 var mainViewModel = new observable.Observable();
 
