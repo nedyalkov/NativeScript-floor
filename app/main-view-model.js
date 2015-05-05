@@ -5,7 +5,7 @@ var mainViewModel = new observable.Observable();
 
 mainViewModel.set("title", "Loading floorplan");
 mainViewModel.set("isLoading", true);
-api.getRoomImage(0)
+api.getPlanImage('demo')
     .then(function (res) {
         console.log("Displaying...");
         mainViewModel.set("title", res.title);
