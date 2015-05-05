@@ -3,8 +3,8 @@ var http = require("http"),
     imageSource = require("image-source"),
     officeRnDApi = "https://www.officernd.com/api/v1/";
 
-function getRoomImage(roomIndex, update) {
-    var getRoomImageUri, roomConfig, imageModel, params;
+function getRoomImage(roomIndex) {
+    var getRoomImageUri, roomConfig;
 
     roomIndex = roomIndex || 0;
     roomConfig = config.rooms[roomIndex];
@@ -12,21 +12,20 @@ function getRoomImage(roomIndex, update) {
     getRoomImageUri = officeRnDApi + "rooms/" + roomConfig.roomId + "/export-uri?" + roomConfig.params.join('&');
 
     console.log("Loading: " + getRoomImageUri);
-    http.getJSON(getRoomImageUri)
+    return http.getJSON(getRoomImageUri)
         .then(function (res) {
-            var uri = "https:" + res.uri;
-            console.log("Loading image: " + uri);
-            imageSource.fromUrl(uri)
-                .then(function (image) {
-                    console.log("Image downloaded");
-                    update(roomConfig.roomName, image);
-                }, function (err) {
-                    console.log("ERROR downloading image: " + err);
-                    update(roomConfig.roomName, defaultNotFoundImageSource);
-                });
-        }, function (err) {
-            console.log("ERROR calling API: " + err);
-            update(roomConfig.roomName, defaultNotFoundImageSource);
+            var uri;
+
+            uri = "https:" + res.uri;
+            console.log("Downloading: " + uri);
+            return imageSource.fromUrl(uri);
+        })
+        .then(function (image) {
+            console.log("Downloaded!");
+            return {
+                title: roomConfig.roomName,
+                image: image
+            };
         });
 }
 
